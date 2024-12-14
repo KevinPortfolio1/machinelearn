@@ -1,0 +1,133 @@
+要使用機器學習來進行「圖片分辨是否是人類」的任務，通常需要訓練一個分類模型，
+這個模型會根據圖像的特徵來判斷圖片中是否包含人類。常見的方法是使用深度學習中的卷積神經網絡（CNN），
+這些方法在圖像識別中表現出色。
+
+
+流程概覽：
+
+    資料準備：
+        收集包含「人類」和「非人類」的圖片數據集。
+        這些圖片應該標註為「人類」或「非人類」。
+
+    資料處理：
+        對圖片進行預處理，例如：調整大小、正規化像素值、增強數據（例如，翻轉、旋轉等）。
+
+    模型選擇與建立：
+        選擇一個適合的深度學習模型（例如，卷積神經網絡 CNN）。
+        可以使用已經訓練好的模型，如 ResNet 或 VGG，並進行遷移學習（fine-tuning）。
+
+    訓練與評估：
+        使用訓練數據來訓練模型。
+        使用測試數據來評估模型的性能。
+
+    模型推理：
+        使用訓練好的模型進行推斷，對新圖片進行分類。
+
+範例程式（使用 Keras 和 TensorFlow）：
+
+以下是一個簡單的範例，展示如何用卷積神經網絡（CNN）進行圖片分類，判斷是否是人類。
+1. 安裝所需的庫
+
+pip install tensorflow numpy matplotlib
+
+2. 引入所需庫
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+import matplotlib.pyplot as plt
+
+3. 數據準備
+
+假設我們有一個包含 human 和 not_human 類別的數據集，數據應該被放在兩個不同的資料夾中。
+你可以使用 ImageDataGenerator 來加載並增強圖像數據。
+
+train_datagen = ImageDataGenerator(
+    rescale=1./255,
+    rotation_range=30,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    shear_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+test_datagen = ImageDataGenerator(rescale=1./255)
+
+train_generator = train_datagen.flow_from_directory(
+    'data/train',  # 訓練資料夾路徑
+    target_size=(64, 64),  # 調整圖片大小
+    batch_size=32,
+    class_mode='binary'  # 二分類（人類與非人類）
+)
+
+validation_generator = test_datagen.flow_from_directory(
+    'data/validation',  # 驗證資料夾路徑
+    target_size=(64, 64),
+    batch_size=32,
+    class_mode='binary'
+)
+
+4. 建立 CNN 模型
+
+model = Sequential()
+
+# 第一層卷積層
+model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(64, 64, 3)))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# 第二層卷積層
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# 第三層卷積層
+model.add(Conv2D(128, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+
+# Flatten 層，將多維數據轉換為一維數據
+model.add(Flatten())
+
+# 全連接層
+model.add(Dense(128, activation='relu'))
+model.add(Dense(1, activation='sigmoid'))  # 使用 Sigmoid 函數作為輸出
+
+model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+
+5. 訓練模型
+
+history = model.fit(
+    train_generator,
+    steps_per_epoch=train_generator.samples // train_generator.batch_size,
+    epochs=10,
+    validation_data=validation_generator,
+    validation_steps=validation_generator.samples // validation_generator.batch_size
+)
+
+6. 評估模型
+
+# 評估模型在測試集上的表現
+loss, accuracy = model.evaluate(validation_generator)
+print(f"Test accuracy: {accuracy * 100:.2f}%")
+
+7. 使用模型進行推理
+
+from tensorflow.keras.preprocessing import image
+import numpy as np
+
+# 載入圖片
+img_path = 'path_to_image.jpg'  # 指定你想預測的圖片路徑
+img = image.load_img(img_path, target_size=(64, 64))
+
+# 轉換成數據格式
+img_array = image.img_to_array(img)
+img_array = np.expand_dims(img_array, axis=0)  # 增加批次維度
+img_array /= 255.0  # 正規化
+
+# 預測
+prediction = model.predict(img_array)
+if prediction[0] > 0.5:
+    print("This is a human.")
+else:
+    print("This is not a human.")
