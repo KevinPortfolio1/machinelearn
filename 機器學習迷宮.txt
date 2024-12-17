@@ -1,0 +1,274 @@
+在機器學習中，迷宮找路問題（Maze Solving）是一個經典的例子，通常用來展示智能體如何在一個空間中找到從起點到終點的最佳路徑。這個問題可以用來實現多種學習方法，以下是常見的一些方法：
+
+1. Q-Learning (強化學習)
+
+Q-Learning 是一種強化學習算法，用於訓練智能體在迷宮中找到最佳路徑。
+強化學習中的智能體會根據當前所處的狀態選擇一個動作，並根據動作的結果獲得獎勳或懲罰。
+智能體會通過多次嘗試來學習如何獲得最大的總回報。
+
+    狀態 (State)：智能體在迷宮中的位置。
+    動作 (Action)：智能體可以選擇的移動方向（如：上、下、左、右）。
+    獎勳 (Reward)：達到終點時給予正回報，撞牆或移動至無效位置時給予負回報。
+
+Q-Learning 通過更新 Q 值（狀態-動作對的評價值），使得智能體可以學會如何在迷宮中選擇最有效的路徑。
+
+2. 深度Q網絡 (DQN)
+
+DQN 是將深度學習與 Q-Learning 結合的一種方法。傳統的 Q-Learning 需要保存每一個狀態-動作對的 Q 值，
+但在大規模問題中，這樣的方法並不適用。DQN 使用神經網絡來近似 Q 值，使其能夠在更複雜的迷宮中進行學習。
+
+3. A 搜索 (A-Star)*
+
+A* 搜索是一種常見的啟發式搜索算法，通常用來解決迷宮中的最短路徑問題。它結合了 啟發式函數 和 代價函數，
+在搜尋過程中能夠考慮到「從起點到當前點的代價」與「當前點到終點的估算距離」兩個方面來選擇最佳路徑。
+
+    f(n) = g(n) + h(n)
+    其中，f(n) 是估算的總成本，g(n) 是從起點到當前節點的實際成本，h(n) 是從當前節點到終點的啟發式估算成本。
+
+A* 搜索能夠有效地找到從起點到終點的最短路徑，並且避免了無謂的探索。
+
+4. 遺傳算法
+
+遺傳算法是一種模擬自然選擇過程的進化算法，可以用來解決迷宮中的路徑規劃問題。在遺傳算法中，
+每一條可能的路徑被視為一個「個體」，通過交叉、變異等操作進行進化，最終找到最佳的解。
+
+5. 神經網絡
+
+除了 Q-Learning 和深度Q網絡，傳統的神經網絡也可以應用於迷宮求解。神經網絡可以學習迷宮的規律，
+並從大量的訓練數據中提取出最短路徑的策略。
+
+實作步驟（以 Q-Learning 為例）：
+
+    初始化 Q 表：創建一個空的 Q 表，用來存儲每個狀態-動作對的 Q 值。
+    定義參數：設定學習率 (α)、折扣因子 (γ)、探索率 (ε) 等超參數。
+    訓練過程：
+        在迷宮中選擇初始位置。
+        根據 ε-貪心策略選擇動作（即以一定的概率隨機選擇動作，或者選擇 Q 值最大的動作）。
+        執行選擇的動作，觀察回報並更新 Q 值。
+    學習過程：經過多次迭代，智能體會學會選擇最佳的動作，從而找到迷宮的最短路徑。
+
+這些方法可以根據具體情況進行調整和優化。
+
+
+
+以下是使用 C# 和 Python 來解決迷宮找路問題的簡單範例。
+
+我將展示 Q-Learning 和 A* 算法的基本實現。
+
+1. Q-Learning（強化學習）範例
+Python 範例：使用 Q-Learning 來解迷宮
+
+import numpy as np
+import random
+
+# 迷宮環境設定
+maze = [
+    [0, 0, 0, 0, 0],
+    [0, -1, -1, -1, 0],
+    [0, 0, 0, 0, 0],
+    [0, -1, -1, -1, 0],
+    [0, 0, 0, 0, 1]
+]
+
+# 初始化參數
+actions = [(0, 1), (1, 0), (0, -1), (-1, 0)]  # 上、右、下、左
+alpha = 0.1  # 學習率
+gamma = 0.9  # 折扣因子
+epsilon = 0.1  # 探索率
+Q = np.zeros((5, 5, 4))  # Q 表 (5x5的迷宮，每個位置有4個動作)
+
+# 獎勳設置
+reward = -1  # 每一步的獎勳
+goal = (4, 4)  # 目標位置
+maze[goal[0]][goal[1]] = 1  # 設置目標
+
+# 定義 Q-Learning 更新函數
+def get_next_action(state):
+    if random.uniform(0, 1) < epsilon:
+        return random.choice(range(4))  # 隨機選擇動作
+    else:
+        return np.argmax(Q[state[0], state[1]])  # 選擇Q值最大的動作
+
+# 定義移動函數
+def get_next_state(state, action):
+    move = actions[action]
+    new_state = (state[0] + move[0], state[1] + move[1])
+
+    if 0 <= new_state[0] < 5 and 0 <= new_state[1] < 5 and maze[new_state[0]][new_state[1]] != -1:
+        return new_state
+    return state  # 如果撞牆則不移動
+
+# Q-Learning 主循環
+for episode in range(1000):  # 訓練1000回合
+    state = (0, 0)  # 起始位置
+    while state != goal:
+        action = get_next_action(state)  # 根據Q值選擇動作
+        next_state = get_next_state(state, action)  # 獲取下一個狀態
+        reward = 1 if next_state == goal else -1  # 如果到達目標，給予正回報
+
+        # Q 值更新公式
+        Q[state[0], state[1], action] += alpha * (reward + gamma * np.max(Q[next_state[0], next_state[1]]) - Q[state[0], state[1], action])
+
+        state = next_state  # 更新狀態
+
+# 測試最終結果
+state = (0, 0)
+path = [state]
+while state != goal:
+    action = np.argmax(Q[state[0], state[1]])  # 依照學習到的Q值選擇最佳動作
+    state = get_next_state(state, action)
+    path.append(state)
+
+print("最短路徑:", path)
+
+C# 範例：使用 Q-Learning 來解迷宮
+
+using System;
+using System.Collections.Generic;
+
+class QLearning
+{
+    static int[,] maze = new int[,] {
+        { 0, 0, 0, 0, 0 },
+        { 0, -1, -1, -1, 0 },
+        { 0, 0, 0, 0, 0 },
+        { 0, -1, -1, -1, 0 },
+        { 0, 0, 0, 0, 1 }
+    };
+
+    static int[] dx = { 0, 1, 0, -1 };  // 上、右、下、左
+    static int[] dy = { 1, 0, -1, 0 };
+    static double alpha = 0.1;  // 學習率
+    static double gamma = 0.9;  // 折扣因子
+    static double epsilon = 0.1;  // 探索率
+
+    static double[,,] Q = new double[5, 5, 4];  // Q 表 (5x5迷宮, 每個位置4個動作)
+
+    static void Main(string[] args)
+    {
+        Random rand = new Random();
+        int goalX = 4, goalY = 4;  // 目標位置
+
+        for (int episode = 0; episode < 1000; episode++)  // 訓練1000回合
+        {
+            int x = 0, y = 0;  // 起始位置
+            while (x != goalX || y != goalY)
+            {
+                int action = (rand.NextDouble() < epsilon) ? rand.Next(4) : MaxAction(x, y);  // ε-貪心策略
+                int nextX = x + dx[action];
+                int nextY = y + dy[action];
+
+                if (IsValidMove(nextX, nextY))  // 確保不越界或撞牆
+                {
+                    double reward = (nextX == goalX && nextY == goalY) ? 1.0 : -1.0;
+                    int nextAction = MaxAction(nextX, nextY);
+
+                    // 更新 Q 值
+                    Q[x, y, action] += alpha * (reward + gamma * Q[nextX, nextY, nextAction] - Q[x, y, action]);
+                    x = nextX;
+                    y = nextY;
+                }
+            }
+        }
+
+        // 測試最終結果
+        List<(int, int)> path = new List<(int, int)>();
+        int startX = 0, startY = 0;
+        path.Add((startX, startY));
+
+        while (startX != goalX || startY != goalY)
+        {
+            int action = MaxAction(startX, startY);
+            startX += dx[action];
+            startY += dy[action];
+            path.Add((startX, startY));
+        }
+
+        Console.WriteLine("最短路徑:");
+        foreach (var p in path)
+        {
+            Console.WriteLine($"({p.Item1}, {p.Item2})");
+        }
+    }
+
+    static int MaxAction(int x, int y)
+    {
+        int maxAction = 0;
+        for (int i = 1; i < 4; i++)
+        {
+            if (Q[x, y, i] > Q[x, y, maxAction])
+                maxAction = i;
+        }
+        return maxAction;
+    }
+
+    static bool IsValidMove(int x, int y)
+    {
+        return x >= 0 && x < 5 && y >= 0 && y < 5 && maze[x, y] != -1;
+    }
+}
+
+2. A* 算法範例
+Python 範例：使用 A* 搜索算法解迷宮
+
+import heapq
+
+# 迷宮環境設定
+maze = [
+    [0, 0, 0, 0, 0],
+    [0, -1, -1, -1, 0],
+    [0, 0, 0, 0, 0],
+    [0, -1, -1, -1, 0],
+    [0, 0, 0, 0, 1]
+]
+
+# 目標位置
+goal = (4, 4)
+
+# 定義 A* 的啟發式函數
+def heuristic(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+# A* 算法
+def astar(maze, start, goal):
+    open_list = []
+    closed_list = set()
+    came_from = {}
+
+    heapq.heappush(open_list, (0 + heuristic(start, goal), start))  # (f_score, position)
+    g_score = {start: 0}
+
+    while open_list:
+        _, current = heapq.heappop(open_list)
+
+        if current == goal:
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            return path[::-1]
+
+        closed_list.add(current)
+
+        for dx, dy in [(0, 1), (1, 0), (0, -1), (-1, 0)]:
+            neighbor = (current[0] + dx, current[1] + dy)
+
+            if 0 <= neighbor[0] < len(maze) and 0 <= neighbor[1] < len(maze[0]) 
+			and maze[neighbor[0]][neighbor[1]] != -1 and neighbor not in closed_list:
+                tentative_g_score = g_score[current] + 1
+
+                if neighbor not in g_score or tentative_g_score < g_score[neighbor]:
+                    came_from[neighbor] = current
+                    g_score[neighbor] = tentative_g_score
+                    heapq.heappush(open_list, (tentative_g_score + heuristic(neighbor, goal), neighbor))
+
+    return None
+
+# 使用 A* 算法解迷宮
+start = (0, 0)
+path = astar(maze, start, goal)
+
+print("最短路徑:", path)
+
+這些範例展示了如何使用 Q-Learning 和 A* 算法來解迷宮。
